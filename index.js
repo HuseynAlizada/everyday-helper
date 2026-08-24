@@ -109,6 +109,94 @@ var CookieManager = {
   }
 };
 
+// src/lib/server-cookie.ts
+var parseCookieHeader = (cookieHeader) => {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(";").forEach((pair) => {
+    const separatorIndex = pair.indexOf("=");
+    if (separatorIndex === -1) return;
+    const rawName = pair.slice(0, separatorIndex).trim();
+    const rawValue = pair.slice(separatorIndex + 1).trim();
+    if (!rawName) return;
+    try {
+      cookies[decodeURIComponent(rawName)] = decodeURIComponent(rawValue);
+    } catch {
+      cookies[rawName] = rawValue;
+    }
+  });
+  return cookies;
+};
+var getServerCookie = (name, cookieHeader) => {
+  const cookies = parseCookieHeader(cookieHeader);
+  return name in cookies ? cookies[name] : null;
+};
+var serializeCookie = (name, value, options = {}) => {
+  let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
+    value
+  )}`;
+  if (options.maxAge !== void 0) {
+    cookieString += `; Max-Age=${Math.floor(options.maxAge)}`;
+  }
+  if (options.expires) {
+    let date = null;
+    if (typeof options.expires === "number") {
+      date = /* @__PURE__ */ new Date();
+      date.setDate(date.getDate() + options.expires);
+    } else if (typeof options.expires === "string" || options.expires instanceof Date) {
+      date = new Date(options.expires);
+    }
+    if (date && !isNaN(date.getTime())) {
+      cookieString += `; Expires=${date.toUTCString()}`;
+    }
+  }
+  cookieString += `; Path=${options.path ?? "/"}`;
+  if (options.domain) {
+    cookieString += `; Domain=${options.domain}`;
+  }
+  if (options.secure) {
+    cookieString += `; Secure`;
+  }
+  if (options.httpOnly) {
+    cookieString += `; HttpOnly`;
+  }
+  if (options.sameSite) {
+    const sameSiteLabel = options.sameSite.charAt(0).toUpperCase() + options.sameSite.slice(1);
+    cookieString += `; SameSite=${sameSiteLabel}`;
+  }
+  return cookieString;
+};
+var createServerCookieManager = (cookieStore) => ({
+  set: (name, value, options = {}) => {
+    cookieStore.set(name, value, options);
+  },
+  get: (name) => {
+    return cookieStore.get(name)?.value ?? null;
+  },
+  remove: (name) => {
+    cookieStore.delete(name);
+  }
+});
+var DEFAULT_AUTH_COOKIE_OPTIONS = {
+  path: "/",
+  secure: true,
+  httpOnly: false,
+  sameSite: "lax"
+};
+var DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+var createAuthCookieOptions = (maxAge = DEFAULT_AUTH_COOKIE_MAX_AGE, overrides = {}) => ({
+  ...DEFAULT_AUTH_COOKIE_OPTIONS,
+  maxAge,
+  ...overrides
+});
+var removeServerCookie = (name, options = {}) => {
+  return serializeCookie(name, "", {
+    ...options,
+    maxAge: 0,
+    expires: /* @__PURE__ */ new Date(0)
+  });
+};
+
 // src/lib/storage.ts
 var isBrowserEnv = typeof window !== "undefined";
 var getStorage = (type) => {
@@ -359,6 +447,9 @@ var generateQuery = (query) => {
 };
 var isLoggedIn = (name) => {
   return !!CookieManager.get(name);
+};
+var isLoggedInFromCookieHeader = (name, cookieHeader) => {
+  return !!getServerCookie(name, cookieHeader);
 };
 
 // src/constants/DateFormats.ts
@@ -2072,14 +2163,11 @@ function useOutsideClick(ref, onClickOutside) {
   useEventListener("mousedown", handler, document);
 }
 
-// src/hooks/useBeforeUnload.ts
-import { useEffect as useEffect12 } from "react";
-
 // src/hooks/useUpdateEffect.ts
-import { useEffect as useEffect13, useRef as useRef6 } from "react";
+import { useEffect as useEffect12, useRef as useRef6 } from "react";
 function useUpdateEffect(effect, deps) {
   const isFirstRender = useRef6(true);
-  useEffect13(() => {
+  useEffect12(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
@@ -2089,9 +2177,9 @@ function useUpdateEffect(effect, deps) {
 }
 
 // src/hooks/useResizeListener.ts
-import { useEffect as useEffect14 } from "react";
+import { useEffect as useEffect13 } from "react";
 var useResizeListener = (callback, active) => {
-  useEffect14(() => {
+  useEffect13(() => {
     if (active) {
       callback();
       window.addEventListener(EventTypes_default.RESIZE, callback);
@@ -2102,14 +2190,11 @@ var useResizeListener = (callback, active) => {
   }, [active, callback]);
 };
 
-// src/hooks/useCopyToClipboard.ts
-import { useState as useState6 } from "react";
-
 // src/hooks/useScrollThreshold.ts
-import { useState as useState7, useEffect as useEffect15 } from "react";
+import { useState as useState6, useEffect as useEffect14 } from "react";
 var useScrollThreshold = (threshold = 300) => {
-  const [isReached, setIsReached] = useState7(false);
-  useEffect15(() => {
+  const [isReached, setIsReached] = useState6(false);
+  useEffect14(() => {
     const handleScroll = (e) => {
       const target = e.target;
       if (target.scrollTop > threshold) {
@@ -2123,6 +2208,8 @@ var useScrollThreshold = (threshold = 300) => {
 };
 export {
   CookieManager,
+  DEFAULT_AUTH_COOKIE_MAX_AGE,
+  DEFAULT_AUTH_COOKIE_OPTIONS,
   DateFormats,
   FormDataBuilder,
   SearchMode,
@@ -2150,7 +2237,9 @@ export {
   convertFileToBase64,
   count,
   countOccurrences,
+  createAuthCookieOptions,
   createFormData,
+  createServerCookieManager,
   createStorage,
   curry,
   debounce,
@@ -2184,6 +2273,7 @@ export {
   getEndpoint,
   getImageUrl,
   getInitials,
+  getServerCookie,
   groupBy,
   has,
   hasAzerbaijanCountryCode,
@@ -2197,6 +2287,7 @@ export {
   isEqual,
   isFuture,
   isLoggedIn,
+  isLoggedInFromCookieHeader,
   isNotEmpty,
   isNulOrUndefined,
   isObject,
@@ -2230,6 +2321,7 @@ export {
   once,
   padEnd,
   padStart,
+  parseCookieHeader,
   parseDate,
   partial,
   partition,
@@ -2237,6 +2329,7 @@ export {
   pushIf,
   rateLimit,
   reject,
+  removeServerCookie,
   repeat,
   retry,
   reverse,
@@ -2246,6 +2339,7 @@ export {
   sample,
   sampleSize,
   scaleIn,
+  serializeCookie,
   session,
   set,
   shuffle,

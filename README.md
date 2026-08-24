@@ -131,6 +131,84 @@ const token = CookieManager.get('user_token');
 CookieManager.remove('user_token');
 ```
 
+`CookieManager` reads/writes `document.cookie`, so it's client-side only — it
+silently no-ops during SSR. For server-side cookie access (Next.js, Nuxt,
+SvelteKit, Express, etc.), use the framework-agnostic `server-cookie` helpers
+instead.
+
+---
+
+### Server-side cookies
+
+Framework-agnostic helpers for reading/writing cookies on the server. They
+work with a raw `Cookie` header string in and a plain options object /
+`Set-Cookie` header string out, so they have zero dependency on Next.js (or
+any other framework) — you wire them to whatever `req`/`res`/`event` your
+framework hands you.
+
+```tsx
+import { getServerCookie, serializeCookie } from 'everyday-helper';
+
+// Next.js Pages Router — getServerSideProps
+export async function getServerSideProps({ req, res }) {
+  const token = getServerCookie('user_token', req.headers.cookie);
+
+  res.setHeader('Set-Cookie', serializeCookie('user_token', 'abc123', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+  }));
+
+  return { props: { isLoggedIn: !!token } };
+}
+```
+
+`createAuthCookieOptions` centralizes the `secure`/`httpOnly`/`sameSite`/
+`maxAge` defaults for an auth token cookie so they're not re-typed (and
+drifted) at every call site — `maxAge` defaults to `DEFAULT_AUTH_COOKIE_MAX_AGE`
+(7 days) if omitted. Its shape matches the native cookie APIs of Next.js
+(`next/headers` `cookies().set()`, `NextResponse.cookies.set()`) directly, so
+it can be spread straight in — no adapter needed:
+
+```tsx
+// app/actions.ts — your own Next.js Server Action
+'use server';
+
+import { cookies } from 'next/headers';
+import { createAuthCookieOptions } from 'everyday-helper';
+
+export async function saveTokenInServer(value: string, name: string, maxAge?: number) {
+  const cookieStore = await cookies();
+  cookieStore.set(name, value, createAuthCookieOptions(maxAge));
+}
+```
+
+The same options object works for `serializeCookie` (Pages Router / Express)
+or a Nuxt/SvelteKit `setCookie`-style call — only the last line differs per
+framework.
+
+`createServerCookieManager` wraps your framework's cookie store (anything
+shaped like `next/headers` `cookies()` or SvelteKit's `event.cookies` — a
+`get`/`set`/`delete` trio) so it reads exactly like `CookieManager`:
+
+```tsx
+'use server';
+
+import { cookies } from 'next/headers';
+import { createServerCookieManager, createAuthCookieOptions } from 'everyday-helper';
+
+export async function saveTokenInServer(value: string, name: string, maxAge?: number) {
+  const ServerCookieManager = createServerCookieManager(await cookies());
+  ServerCookieManager.set(name, value, createAuthCookieOptions(maxAge));
+}
+
+export async function deleteTokenInServer(name: string) {
+  const ServerCookieManager = createServerCookieManager(await cookies());
+  ServerCookieManager.remove(name);
+}
+```
+
 ---
 
 ### lazyLoad
