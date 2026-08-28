@@ -6,6 +6,11 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added
+
+- `useListPagination` hook for client-side array pagination (page/pageSize slicing with clamped bounds)
+- `useUrlPagination` hook for pagination state synced with URL search params
+
 ## [1.3.4] - 2026-02-11
 
 ### Changed

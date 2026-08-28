@@ -570,6 +570,88 @@ function Accordion() {
 
 ---
 
+### useListPagination
+
+Client-side pagination over an in-memory array — slices the array for you and clamps page/pageSize to valid bounds.
+
+```tsx
+import { useListPagination } from 'everyday-helper/hooks';
+
+function UserList({ users }) {
+  const { paginatedItems, page, pageCount, nextPage, prevPage, hasNextPage, hasPrevPage } =
+    useListPagination(users, { pageSize: 10 });
+
+  return (
+    <div>
+      {paginatedItems.map((user) => (
+        <UserRow key={user.id} user={user} />
+      ))}
+      <button onClick={prevPage} disabled={!hasPrevPage}>
+        Prev
+      </button>
+      <span>
+        {page} / {pageCount}
+      </span>
+      <button onClick={nextPage} disabled={!hasNextPage}>
+        Next
+      </button>
+    </div>
+  );
+}
+```
+
+**Options:**
+
+- `initialPage` - Starting page, 1-indexed (default: `1`)
+- `pageSize` - Items per page (default: `10`)
+
+**Returns:**
+
+- `paginatedItems` - The current page's slice of `items`
+- `page`, `pageSize`, `pageCount` - Current pagination state
+- `hasNextPage`, `hasPrevPage` - Booleans for disabling nav controls
+- `setPage(page)`, `setPageSize(pageSize)` - Update state directly (changing `pageSize` resets to page 1)
+- `nextPage()`, `prevPage()` - Convenience navigation
+
+---
+
+### useUrlPagination
+
+Pagination state synced to the URL's search params (via `history.replaceState`), so page/pageSize survive a refresh or a shared link. Framework-agnostic — no router dependency, safe to call during SSR.
+
+```tsx
+import { useUrlPagination } from 'everyday-helper/hooks';
+
+function OrdersPage() {
+  const { page, pageSize, nextPage, prevPage } = useUrlPagination({ initialPageSize: 20 });
+
+  const { data } = useOrdersQuery({ page, pageSize });
+
+  return (
+    <div>
+      <OrdersTable orders={data} />
+      <button onClick={prevPage}>Prev</button>
+      <button onClick={nextPage}>Next</button>
+    </div>
+  );
+}
+```
+
+**Options:**
+
+- `pageParam` - Query param name for the page (default: `'page'`)
+- `pageSizeParam` - Query param name for the page size (default: `'pageSize'`)
+- `initialPage` - Fallback page when the URL has none (default: `1`)
+- `initialPageSize` - Fallback page size when the URL has none (default: `10`)
+
+**Returns:**
+
+- `page`, `pageSize` - Current pagination state (read from the URL on mount)
+- `setPage(page)`, `setPageSize(pageSize)` - Update state and the URL (changing `pageSize` resets to page 1)
+- `nextPage()`, `prevPage()` - Convenience navigation
+
+---
+
 ## Utility Functions
 
 ### Array Utils
