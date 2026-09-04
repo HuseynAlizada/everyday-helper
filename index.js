@@ -397,6 +397,8 @@ var lazyLoad = (componentMap, options = {}) => {
 // src/utils/browser.ts
 var isBrowser = () => typeof window !== "undefined";
 var safeWindow = () => isBrowser() ? window : void 0;
+var isDocumentAvailable = () => typeof document !== "undefined";
+var safeDocument = () => isDocumentAvailable() ? document : void 0;
 
 // src/utils/common-utils.ts
 function isNulOrUndefined(v) {
@@ -2007,10 +2009,12 @@ var EventTypes_default = EventTypes;
 
 // src/hooks/useEventListener.ts
 import { useEffect as useEffect8 } from "react";
-function useEventListener(event, handler, element = window) {
+function useEventListener(event, handler, element) {
   useEffect8(() => {
-    element.addEventListener(event, handler);
-    return () => element.removeEventListener(event, handler);
+    const target = element ?? safeWindow();
+    if (!target) return;
+    target.addEventListener(event, handler);
+    return () => target.removeEventListener(event, handler);
   }, [event, handler, element]);
 }
 
@@ -2033,7 +2037,7 @@ var useEscapeKey = ({
     },
     [enabled, onEscape, preventDefault]
   );
-  useEventListener("keydown", handler, document);
+  useEventListener("keydown", handler, safeDocument());
 };
 
 // src/hooks/useScrollLock.ts
@@ -2160,7 +2164,7 @@ function useOutsideClick(ref, onClickOutside) {
     },
     [ref, onClickOutside]
   );
-  useEventListener("mousedown", handler, document);
+  useEventListener("mousedown", handler, safeDocument());
 }
 
 // src/hooks/useUpdateEffect.ts
@@ -2283,6 +2287,7 @@ export {
   invert,
   isBetweenDates,
   isBrowser,
+  isDocumentAvailable,
   isEmpty,
   isEqual,
   isFuture,
@@ -2335,6 +2340,7 @@ export {
   reverse,
   reverseArr,
   safeCall,
+  safeDocument,
   safeWindow,
   sample,
   sampleSize,

@@ -469,6 +469,8 @@ declare const useScrollThreshold: (threshold?: number) => boolean;
 
 declare const isBrowser: () => boolean;
 declare const safeWindow: () => (Window & typeof globalThis) | undefined;
+declare const isDocumentAvailable: () => boolean;
+declare const safeDocument: () => Document | undefined;
 
 /**
  * Configuration for a shared feature endpoint.

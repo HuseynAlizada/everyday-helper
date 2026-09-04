@@ -10,6 +10,9 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 - `useListPagination` hook for client-side array pagination (page/pageSize slicing with clamped bounds)
 - `useUrlPagination` hook for pagination state synced with URL search params
+### Fixed
+
+- `useOutsideClick` and `useEscapeKey` no longer crash during SSR (they referenced `document` directly at render time instead of inside an effect). `useEventListener`'s `window` fallback is now resolved lazily inside its effect as well, so the fix covers every hook built on top of it. Public API is unchanged.
 
 ## [1.3.4] - 2026-02-11
 
