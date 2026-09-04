@@ -21,7 +21,8 @@ export interface UseUrlPaginationResult {
 function readIntParam(searchParams: URLSearchParams, key: string, fallback: number): number {
   const raw = searchParams.get(key);
   const parsed = raw === null ? NaN : Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  const value = Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+  return value;
 }
 
 export function useUrlPagination({
